@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Compass Poster</title>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: system-ui, sans-serif;
+      background: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+    #preview-area {
+      width: 100%;
+      max-width: 595px;
+      aspect-ratio: 595 / 842;
+      background: white;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      overflow: hidden;
+      position: relative;
+      margin: 24px auto;
+      border-radius: 8px;
+    }
+    #image-container {
+      width: 100%;
+      height: calc(100% - 90px);
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #main-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;           /* letterbox for main poster */
+    }
+    #footer-area {
+      height: 90px;
+      width: 100%;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+    #footer-image {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;           /* ← NO cropping, full image visible */
+      object-position: center;
+    }
+    .placeholder {
+      color: #9ca3af;
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 1.15rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1 class="text-2xl font-bold mb-3 text-center">Poster to A4 + Footer (Fully Visible, No Crop)</h1>
+  <p class="text-center text-gray-600 mb-6">
+    Upload any image → centered with white edges if needed → footer always shown completely (no cropping, scaled to fit 90 px height):
+  </p>
+
+  <div class="text-center mb-6">
+    <img src="https://www.compassoffices.com/wp-content/uploads/2025/10/poster-footer-1.jpg"
+         alt="Footer preview (fully visible)"
+         style="max-height:82px; width:auto; object-fit:contain; border-radius:6px; box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+  </div>
+
+  <div class="mb-8">
+    <label class="block font-medium mb-2 text-center">Choose your poster / image:</label>
+    <input type="file" id="file-input" accept="image/*"
+           class="block mx-auto w-full max-w-md text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white p-2.5 shadow-sm"/>
+  </div>
+
+  <div id="preview-area">
+    <div id="image-container">
+      <img id="main-image" src="" alt="" style="display:none;">
+      <div class="placeholder" id="placeholder">
+        Upload your image here<br>
+        → keeps original proportions + white letterbox if needed<br>
+        → footer shown 100% without any cropping
+      </div>
+    </div>
+    <div id="footer-area">
+      <img id="footer-image" 
+           src="https://www.compassoffices.com/wp-content/uploads/2025/10/poster-footer-1.jpg"
+           alt="Compass Offices Footer">
+    </div>
+  </div>
+
+  <div class="text-center mt-10">
+    <button id="download-btn" 
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-12 py-4 rounded-xl text-lg font-semibold shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled>
+      Download Print-Ready A4 JPG (2480 × 3508 px)
+    </button>
+  </div>
+
+  <p class="text-center text-sm text-gray-500 mt-8">
+    • Main image undistorted with white borders when needed<br>
+    • Footer: always fully visible (contain mode) – may have small white side gaps if narrower than A4 width
+  </p>
+</div>
+
+<script>
+// ────────────────────────────────────────────────
+const A4_WIDTH_PX  = 2480;
+const A4_HEIGHT_PX = 3508;
+const FOOTER_HEIGHT_PX_HIGH_RES = 375;  // 90 × (300/72) ≈ 375 px
+
+const fileInput    = document.getElementById('file-input');
+const mainImg      = document.getElementById('main-image');
+const downloadBtn  = document.getElementById('download-btn');
+
+let imageLoaded = false;
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    mainImg.src = ev.target.result;
+    mainImg.style.display = 'block';
+    document.getElementById('placeholder').style.display = 'none';
+    imageLoaded = true;
+    downloadBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+});
+
+downloadBtn.addEventListener('click', () => {
+  downloadBtn.textContent = "Generating… please wait";
+  downloadBtn.disabled = true;
+
+  const tempDiv = document.createElement('div');
+  tempDiv.style.width      = A4_WIDTH_PX + 'px';
+  tempDiv.style.height     = A4_HEIGHT_PX + 'px';
+  tempDiv.style.background = 'white';
+  tempDiv.style.position   = 'absolute';
+  tempDiv.style.left       = '-9999px';
+  tempDiv.style.top        = '-9999px';
+  document.body.appendChild(tempDiv);
+
+  // Main content
+  const imgArea = document.createElement('div');
+  imgArea.style.width      = '100%';
+  imgArea.style.height     = `calc(100% - ${FOOTER_HEIGHT_PX_HIGH_RES}px)`;
+  imgArea.style.display    = 'flex';
+  imgArea.style.alignItems = 'center';
+  imgArea.style.justifyContent = 'center';
+  imgArea.style.background = 'white';
+  tempDiv.appendChild(imgArea);
+
+  if (mainImg.src) {
+    const hiImg = document.createElement('img');
+    hiImg.src = mainImg.src;
+    hiImg.style.maxWidth  = '100%';
+    hiImg.style.maxHeight = '100%';
+    hiImg.style.objectFit = 'contain';
+    imgArea.appendChild(hiImg);
+  }
+
+  // Footer – full visibility, no crop
+  const footerDiv = document.createElement('div');
+  footerDiv.style.width      = '100%';
+  footerDiv.style.height     = FOOTER_HEIGHT_PX_HIGH_RES + 'px';
+  footerDiv.style.display    = 'flex';
+  footerDiv.style.alignItems = 'center';
+  footerDiv.style.justifyContent = 'center';
+  footerDiv.style.background = 'white';
+  tempDiv.appendChild(footerDiv);
+
+  const hiFooter = document.createElement('img');
+  hiFooter.src = "https://www.compassoffices.com/wp-content/uploads/2025/10/poster-footer-1.jpg";
+  hiFooter.style.maxWidth  = '100%';
+  hiFooter.style.maxHeight = '100%';
+  hiFooter.style.width     = 'auto';
+  hiFooter.style.height    = 'auto';
+  hiFooter.style.objectFit = 'contain';
+  footerDiv.appendChild(hiFooter);
+
+  setTimeout(() => {
+    html2canvas(tempDiv, {
+      scale: 1,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      allowTaint: true
+    }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = 'a4-poster-no-crop-footer.jpg';
+      link.href = canvas.toDataURL('image/jpeg', 0.93);
+      link.click();
+
+      document.body.removeChild(tempDiv);
+      downloadBtn.textContent = "Download Print-Ready A4 JPG (2480 × 3508 px)";
+      downloadBtn.disabled = false;
+    }).catch(err => {
+      console.error(err);
+      alert("Generation failed – try smaller image or check console.");
+      document.body.removeChild(tempDiv);
+      downloadBtn.textContent = "Download Print-Ready A4 JPG";
+      downloadBtn.disabled = false;
+    });
+  }, 1200);
+});
+</script>
+</body>
+</html>
